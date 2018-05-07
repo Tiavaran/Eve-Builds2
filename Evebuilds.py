@@ -32,16 +32,16 @@ def getdata(threadName, delay, shipdict):
                     else:
                       flag = False
                     if (j in mydict) and flag:
-                        shipslots[4] = shipslots[4] + 1
+                        mydict["count"] = mydict["count"] + 1
                         z = mydict.get(j)
                         mydict[j] = z + 1
                     else:
-                        shipslots[4] = shipslots[4] + 1
+                        mydict["count"] = mydict["count"] + 1
                         mydict[j] = 1
 
             else:
                 p = 0
-                shipdict[ship] = [{}, {}, {}, {}, p]
+                shipdict[ship] = [{}, {}, {}, {}]
                 shipslots = shipdict.get(ship)
                 flag = True
                 for x in t:
@@ -58,15 +58,16 @@ def getdata(threadName, delay, shipdict):
                     else:
                         flag = False
                     if (j in mydict) and flag:
-                        shipslots[4] = shipslots[4] + 1
+                        mydict["count"] = 1
                         z = mydict.get(j)
                         mydict[j] = z+1
                     elif flag:
-                        shipslots[4] = shipslots[4] + 1
+                        mydict["count"] = 1
                         mydict[j] = 1
 
 
-            print(ship)
+
+            #print(ship)
             time.sleep(delay)
         except:
             print("Null Package")
@@ -79,7 +80,18 @@ try:
 except:
     print('Error: unable to start thread')
 while 1:
-    test = input("Enter a ship id: ")
-    x = shipdict.get(int(test))
-    print(x)
+    try:
+        test = input("Enter a ship id or print ship list(list): ")
+        if test == "list":
+            shiptest = shipdict
+            for t in shiptest:
+                print(t)
+        else:
+            x = shipdict.get(int(test))
+            test = input("Enter Slot type(0-3): ")
+            y = x[test]
+            for j in x:
+                print(j)
+    except:
+        print("invalid id")
 
