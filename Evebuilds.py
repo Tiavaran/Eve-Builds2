@@ -89,8 +89,8 @@ while 1:
         else:
             x = shipdict.get(int(test))
             test = input("Enter Slot type(0-3): ")
-            y = x[test]
-            for j in x:
+            y = x[int(test)]
+            for j in y:
                 print(j)
     except:
         print("invalid id")
