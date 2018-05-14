@@ -18,6 +18,7 @@ def load_from_file(shipdict):
     with open('data.json') as fp:
         data = json.load(fp)
     return data
+
 def getdata(delay, shipdict):
     while True:
         r = requests.get('https://redisq.zkillboard.com/listen.php')
@@ -83,6 +84,9 @@ def getdata(delay, shipdict):
                             else:
                                 currslot["count"] = 1
                                 currslot[item_id] = 1
+                                currslot[1] = item_id
+                                for num in range(2, 11):
+                                    currslot[num] = 0
             #print(ship)
             #print(ship_id)
             lock.release()
@@ -90,10 +94,15 @@ def getdata(delay, shipdict):
         except Exception as e:
             logging.exception(e)
 
+def check_top_ten(ship, item_id):
+    print(1)
 
 try:
     shipdict = {}
-    shipdict = load_from_file(shipdict)
+    try:
+        shipdict = load_from_file(shipdict)
+    except:
+        print("No Data To Load")
     lock = threading.Lock()
     data_thread = threading.Thread(target=getdata, args=(10, shipdict))
     data_thread.daemon = True
@@ -115,13 +124,13 @@ while 1:
         else:
             lock.acquire()
             x = shipdict.get(int(uinput))
-            uinput_id = input("Enter Slot type(0-3): ")
-            i_list = x[int(uinput_id)]
-            for key, values in i_list.items():
+            shipid = input("Enter Slot type(0-3): ")
+            itemlist = x[int(shipid)]
+            for key, values in itemlist.items():
                 if key == 'count':
                     print("Total count: " + str(values))
                 else:
-                    divider = i_list["count"]
+                    divider = itemlist["count"]
                     percent = values / divider
                     print(str(key) + ": " + str(percent))
             lock.release()
