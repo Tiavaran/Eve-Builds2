@@ -48,12 +48,15 @@ def getdata(delay, shipdict):
                         if item_id in currslot:
                             currslot["count"] = currslot["count"] + 1
                             currslot[item_id] = currslot[item_id] + 1
+                            check_top_ten(currslot, currslot[item_id])
                         else:
                             if "count" in currslot:
                                 currslot["count"] = currslot["count"] + 1
                                 currslot[item_id] = 1
+                                check_top_ten(currslot, currslot[item_id])
                             else:
                                 currslot["count"] = 1
+                                check_top_ten(currslot, currslot[item_id])
                                 currslot[item_id] = 1
             else:
                 shipdict[ship_id] = [{}, {}, {}, {}]
@@ -77,10 +80,12 @@ def getdata(delay, shipdict):
                         if item_id in currslot:
                             currslot["count"] = currslot["count"] + 1
                             currslot[item_id] = currslot[item_id] + 1
+                            check_top_ten(currslot, currslot[item_id])
                         else:
                             if "count" in currslot:
                                 currslot["count"] = currslot["count"] + 1
                                 currslot[item_id] = 1
+                                check_top_ten(currslot, currslot[item_id])
                             else:
                                 currslot["count"] = 1
                                 currslot[item_id] = 1
@@ -94,8 +99,22 @@ def getdata(delay, shipdict):
         except Exception as e:
             logging.exception(e)
 
-def check_top_ten(ship, item_id):
-    print(1)
+def check_top_ten(shipslot, itemcount):
+    #Indexes 1-10 in each slot dictionary contains the item id of the item that belongs in that slot
+    numone = shipslot[10]
+    if itemcount < shipslot[shipslot[10]]:
+        return 0
+    else:
+        if itemcount > shipslot[shipslot[1]]:
+            return 1
+        elif itemcount > shipdict[shipslot[5]]:
+            for x in range(2, 5):
+                if itemcount > shipslot[shipslot[x]]:
+                    return x
+        else:
+            for y in range(6, 10):
+                if itemcount > shipslot[shipslot[y]]:
+                    return y
 
 try:
     shipdict = {}
