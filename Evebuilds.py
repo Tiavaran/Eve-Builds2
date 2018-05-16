@@ -87,11 +87,12 @@ def getdata(delay, shipdict):
                             if "count" in currslot:
                                 currslot["count"] = currslot["count"] + 1
                                 currslot[item_id] = 1
-                                check_top_ten(currslot, currslot[item_id])
+                                toptenslot = check_top_ten(currslot, currslot[item_id])
                             else:
                                 currslot["count"] = 1
                                 currslot[item_id] = 1
                                 currslot[1] = item_id
+                                currslot[0] = 0
                                 for num in range(2, 11):
                                     currslot[num] = 0
             #print(ship)
@@ -103,22 +104,30 @@ def getdata(delay, shipdict):
 
 
 def check_top_ten(shipslot, itemcount):
-    #Indexes 1-10 in each slot dictionary contains the item id of the item that belongs in that slot
-    numone = shipslot[10]
-    if itemcount < shipslot[shipslot[10]]:
-        return 0
-    else:
-        if itemcount > shipslot[shipslot[1]]:
-            return 1
-        elif itemcount > shipdict[shipslot[5]]:
-            for x in range(2, 5):
-                if itemcount > shipslot[shipslot[x]]:
-                    return x
+    """Indexes 1-10 in each slot dictionary contains the item id of the item that belongs in that slot
+    If not in top 10"""
+    try:
+        if itemcount < shipslot[shipslot[10]]:
+            return 0
         else:
-            for y in range(6, 10):
-                if itemcount > shipslot[shipslot[y]]:
-                    return y
+            # if greater than slot 1
+            if itemcount > shipslot[shipslot[1]]:
+                return 1
+            elif itemcount > shipslot[shipslot[5]]:   # if in top 5
+                for x in range(2, 5):
+                    if itemcount > shipslot[shipslot[x]]:
+                        return x  # return the slot this item will fit in
+            else: # if in top 10 but not top 5
+                for y in range(6, 10):
+                    if itemcount > shipslot[shipslot[y]]:
+                        return y  # return the slot this item will fit in
+    except Exception as e:
+        logging.exception(e)
 
+
+
+def shift_top_ten(shipslot, item_id, slot):
+    print(1)
 
 try:
     shipdict = {}
