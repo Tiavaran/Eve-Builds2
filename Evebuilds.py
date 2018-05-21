@@ -30,6 +30,7 @@ def getdata(delay, shipdict):
             km = killmail["package"]["killmail"]["victim"]["items"]
             ship_id = killmail["package"]["killmail"]["victim"]["ship_type_id"]
             lock.acquire()
+            # Ship exists in the dict
             if ship_id in shipdict:
                 ship = shipdict.get(ship_id)
                 for x in km:
@@ -46,21 +47,27 @@ def getdata(delay, shipdict):
                         currslot = ship[3]
                     else:
                       flag = False
-                    #Continue if item is one of our tracked slots.
+                    # Continue if item is one of our tracked slots.
                     if flag:
+                        # Item exists already
                         if item_id in currslot:
                             currslot["count"] = currslot["count"] + 1
                             currslot[item_id] = currslot[item_id] + 1
-                            check_top_ten(currslot, currslot[item_id])
+                            index = check_top_ten(currslot, currslot[item_id])
+                            shift_top_ten(currslot, item_id, index)
                         else:
+                            # Item does not exist
                             if "count" in currslot:
                                 currslot["count"] = currslot["count"] + 1
                                 currslot[item_id] = 1
-                                check_top_ten(currslot, currslot[item_id])
+                                index = check_top_ten(currslot, currslot[item_id])
+                                shift_top_ten(currslot, item_id, index)
                             else:
                                 currslot["count"] = 1
-                                check_top_ten(currslot, currslot[item_id])
+                                index = check_top_ten(currslot, currslot[item_id])
+                                shift_top_ten(currslot, item_id, index)
                                 currslot[item_id] = 1
+            # Ship does not exist in the dict
             else:
                 shipdict[ship_id] = [{}, {}, {}, {}]
                 ship = shipdict.get(ship_id)
@@ -82,12 +89,14 @@ def getdata(delay, shipdict):
                         if item_id in currslot:
                             currslot["count"] = currslot["count"] + 1
                             currslot[item_id] = currslot[item_id] + 1
-                            check_top_ten(currslot, currslot[item_id])
+                            index check_top_ten(currslot, currslot[item_id])
+                            shift_top_ten(currslot, item_id, index)
                         else:
                             if "count" in currslot:
                                 currslot["count"] = currslot["count"] + 1
                                 currslot[item_id] = 1
-                                toptenslot = check_top_ten(currslot, currslot[item_id])
+                                index = check_top_ten(currslot, currslot[item_id])
+                                shift_top_ten(currslot, item_id, index)
                             else:
                                 currslot["count"] = 1
                                 currslot[item_id] = 1
@@ -125,9 +134,20 @@ def check_top_ten(shipslot, itemcount):
         logging.exception(e)
 
 
+def shift_top_ten(shipslot, item_id, index):
+    """ Takes the current shipslot dict, the item ID being inserted, and index at which the ID needs to be replaced
+        returns 1 if something is inserted and 0 otherwise"""
+    try:
+        if index < 1 or index > 10:
+            return 0
+        else:
+            for slot in range(10, index, -1):
+                shipslot[slot] = shipslot[slot - 1]
+            shipslot[index] = item_id
+            return 1
 
-def shift_top_ten(shipslot, item_id, slot):
-    print(1)
+    except Exception as e:
+        logging.exception(e)
 
 try:
     shipdict = {}
