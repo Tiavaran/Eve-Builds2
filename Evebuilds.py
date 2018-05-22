@@ -19,7 +19,19 @@ def print_to_file(shipdict):
 def load_from_file(shipdict):
     with open('data.json') as fp:
         data = json.load(fp)
-    return data
+    for key, values in data.items():  # rebuilt the dictionary; needed due to how json stores keys
+        #for x in range(0,3):
+        x = data[key]
+        shipdict[int(key)] = [{}, {}, {}, {}] # initialize the dict entry for each hull
+        for iter in range(0, 4):
+            list = x[iter]  # iterate through the loaded data from data.json
+            #shipdict[int(key)][iter]["count"] = list["count"]
+            for ikey, ivalue in list.items():
+                if ikey == "count":
+                    shipdict[int(key)][iter][ikey] = ivalue # count is the only key that is a string
+                else:
+                    shipdict[int(key)][iter][int(ikey)] = ivalue # convert all other keys into integers
+    return shipdict
 
 
 def getdata(delay, shipdict):
@@ -50,25 +62,43 @@ def getdata(delay, shipdict):
                     # Continue if item is one of our tracked slots.
                     if flag:
                         # Item exists already
-                        if item_id in currslot:
+                        if item_id in currslot: # This item has been seen for this hull previously
+                            #Increment total slot count and this item count
                             currslot["count"] = currslot["count"] + 1
                             currslot[item_id] = currslot[item_id] + 1
+                            lock.release()
+                            # check if this item fits in the top 10 then update the list
                             index = check_top_ten(currslot, currslot[item_id])
                             shift_top_ten(currslot, item_id, index)
+                            lock.acquire()
                         else:
                             # Item does not exist
-                            if "count" in currslot:
+                            if "count" in currslot: # We have seen items for this hull in this slot
+                                # increment the total slot count and initialize this item count to 1
                                 currslot["count"] = currslot["count"] + 1
                                 currslot[item_id] = 1
+                                lock.release()
+                                # Check the top 10 and update if necessary
                                 index = check_top_ten(currslot, currslot[item_id])
                                 shift_top_ten(currslot, item_id, index)
+                                lock.acquire()
                             else:
+                                    # if no items have been seen for this hull in this slot initialize the dict
                                 currslot["count"] = 1
+                                currslot[item_id] = 1
+                                # Start the top 10 item list
+                                currslot[1] = item_id
+                                currslot[0] = 0
+                                # initialize the rest of the top 10 to 0
+                                for num in range(2, 11):
+                                    currslot[num] = 0
+                                """lock.release()
                                 index = check_top_ten(currslot, currslot[item_id])
                                 shift_top_ten(currslot, item_id, index)
-                                currslot[item_id] = 1
+                                lock.acquire()"""
             # Ship does not exist in the dict
             else:
+                # initialize the lists of dictionaries for this hull; each entry in the list is a slot type
                 shipdict[ship_id] = [{}, {}, {}, {}]
                 ship = shipdict.get(ship_id)
                 for x in km:
@@ -89,14 +119,18 @@ def getdata(delay, shipdict):
                         if item_id in currslot:
                             currslot["count"] = currslot["count"] + 1
                             currslot[item_id] = currslot[item_id] + 1
-                            index check_top_ten(currslot, currslot[item_id])
+                            lock.release()
+                            index = check_top_ten(currslot, currslot[item_id])
                             shift_top_ten(currslot, item_id, index)
+                            lock.acquire()
                         else:
                             if "count" in currslot:
                                 currslot["count"] = currslot["count"] + 1
                                 currslot[item_id] = 1
+                                lock.release()
                                 index = check_top_ten(currslot, currslot[item_id])
                                 shift_top_ten(currslot, item_id, index)
+                                lock.acquire()
                             else:
                                 currslot["count"] = 1
                                 currslot[item_id] = 1
@@ -116,6 +150,7 @@ def check_top_ten(shipslot, itemcount):
     """Indexes 1-10 in each slot dictionary contains the item id of the item that belongs in that slot
     If not in top 10"""
     try:
+        test = shipslot[shipslot[10]]
         if itemcount < shipslot[shipslot[10]]:
             return 0
         else:
@@ -126,27 +161,38 @@ def check_top_ten(shipslot, itemcount):
                 for x in range(2, 5):
                     if itemcount > shipslot[shipslot[x]]:
                         return x  # return the slot this item will fit in
-            else: # if in top 10 but not top 5
+            else:  # if in top 10 but not top 5
                 for y in range(6, 10):
                     if itemcount > shipslot[shipslot[y]]:
                         return y  # return the slot this item will fit in
     except Exception as e:
         logging.exception(e)
+        return 0
 
 
 def shift_top_ten(shipslot, item_id, index):
     """ Takes the current shipslot dict, the item ID being inserted, and index at which the ID needs to be replaced
         returns 1 if something is inserted and 0 otherwise"""
+    lock.acquire()
     try:
-        if index < 1 or index > 10:
+        if index is None:
+            lock.release()
+            return 0
+        elif index < 1 or index > 10:
+            lock.release()
             return 0
         else:
+            if item_id == shipslot[index]:
+                lock.release()
+                return 0
             for slot in range(10, index, -1):
                 shipslot[slot] = shipslot[slot - 1]
             shipslot[index] = item_id
+            lock.release()
             return 1
 
     except Exception as e:
+        lock.release()
         logging.exception(e)
 
 try:
@@ -176,16 +222,29 @@ while 1:
             write_thread.start()
         else:
             lock.acquire()
-            x = shipdict.get(int(uinput))
+            try:
+                jtest = int(uinput)
+                x = shipdict[jtest]
+            except:
+                x = shipdict[uinput]
             shipid = input("Enter Slot type(0-3): ")
             itemlist = x[int(shipid)]
-            for key, values in itemlist.items():
+            print(itemlist["count"])
+            for index in range(1, 10):
+                divider = itemlist["count"]
+                value = itemlist[itemlist[index]]
+                if value == 0:
+                    print(str(index) + ". " + str(itemlist[index]) + " - " + str(value) + "%")
+                else:
+                    percent = value / divider
+                    print(str(index) + ". " + str(itemlist[index]) + " - " + str(percent * 100) + "%")
+            """for key, values in itemlist.items():
                 if key == 'count':
                     print("Total count: " + str(values))
                 else:
                     divider = itemlist["count"]
                     percent = values / divider
-                    print(str(key) + ": " + str(percent))
+                    print(str(key) + ": " + str(percent))"""
             lock.release()
     except Exception as e:
         logging.exception(e)
