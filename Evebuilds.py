@@ -16,16 +16,22 @@ def print_to_file(shipdict):
     lock.release()
 
 
+def auto_write_file(delay, shipdict):
+    while 1:
+        time.sleep(delay)
+        print_to_file(shipdict)
+
+
 def load_from_file(shipdict):
     with open('data.json') as fp:
         data = json.load(fp)
     for key, values in data.items():  # rebuilt the dictionary; needed due to how json stores keys
-        #for x in range(0,3):
+        # for x in range(0,3):
         x = data[key]
         shipdict[int(key)] = [{}, {}, {}, {}] # initialize the dict entry for each hull
         for iter in range(0, 4):
             list = x[iter]  # iterate through the loaded data from data.json
-            #shipdict[int(key)][iter]["count"] = list["count"]
+            # shipdict[int(key)][iter]["count"] = list["count"]
             for ikey, ivalue in list.items():
                 if ikey == "count":
                     shipdict[int(key)][iter][ikey] = ivalue # count is the only key that is a string
@@ -62,8 +68,8 @@ def getdata(delay, shipdict):
                     # Continue if item is one of our tracked slots.
                     if flag:
                         # Item exists already
-                        if item_id in currslot: # This item has been seen for this hull previously
-                            #Increment total slot count and this item count
+                        if item_id in currslot:  # This item has been seen for this hull previously
+                            # Increment total slot count and this item count
                             currslot["count"] = currslot["count"] + 1
                             currslot[item_id] = currslot[item_id] + 1
                             lock.release()
@@ -138,8 +144,8 @@ def getdata(delay, shipdict):
                                 currslot[0] = 0
                                 for num in range(2, 11):
                                     currslot[num] = 0
-            #print(ship)
-            #print(ship_id)
+            # print(ship)
+            # print(ship_id)
             lock.release()
             time.sleep(delay)
         except Exception as e:
@@ -204,7 +210,10 @@ try:
     lock = threading.Lock()
     data_thread = threading.Thread(target=getdata, args=(10, shipdict))
     data_thread.daemon = True
+    auto_write_thread = threading.Thread(target=auto_write_file, args=(3600, shipdict))
+    auto_write_thread.daemon = True
     data_thread.start()
+    auto_write_thread.start()
 except Exception as e:
     print('Error: unable to start thread')
     logging.exception(e)
