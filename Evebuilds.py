@@ -208,9 +208,10 @@ try:
         shipdict = load_from_file(shipdict)
     except ValueError:
         print("No Data To Load")
-    lock = threading.Lock()
-    data_thread = threading.Thread(target=getdata, args=(10, shipdict))
+    lock = threading.Lock()  # Initilize a lock
+    data_thread = threading.Thread(target=getdata, args=(10, shipdict))  # Function to grab killmail data
     data_thread.daemon = True
+    # Auto write our to our data file
     auto_write_thread = threading.Thread(target=auto_write_file, args=(3600, shipdict))
     auto_write_thread.daemon = True
     data_thread.start()
