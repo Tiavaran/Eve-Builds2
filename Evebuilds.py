@@ -36,20 +36,20 @@ def load_from_file(shipdict):
 
 def getdata(delay, shipdict):
     while True:
-        r = requests.get('https://redisq.zkillboard.com/listen.php')
-        killmail = r.json()
+        r = requests.get('https://redisq.zkillboard.com/listen.php')  # Wait for a kill mail to in then pick it up
+        killmail = r.json() # save it in a a json format
         try:
-            km = killmail["package"]["killmail"]["victim"]["items"]
-            ship_id = killmail["package"]["killmail"]["victim"]["ship_type_id"]
+            km = killmail["package"]["killmail"]["victim"]["items"]  # grab the list of items
+            ship_id = killmail["package"]["killmail"]["victim"]["ship_type_id"]   # Grab the item ID of the hull
             lock.acquire()
             # Ship exists in the dict
             if ship_id in shipdict:
-                ship = shipdict.get(ship_id)
+                ship = shipdict.get(ship_id)  # Grab the lists for that ship
                 for x in km:
                     flag = True
                     item_id = x["item_type_id"]
                     fnum = x["flag"]
-                    if 11 <= fnum < 19:
+                    if 11 <= fnum < 19:   # Check which slot the item is in
                         currslot = ship[0]
                     elif 19 <= fnum < 27:
                         currslot = ship[1]
@@ -58,7 +58,7 @@ def getdata(delay, shipdict):
                     elif 92 <= fnum < 95:
                         currslot = ship[3]
                     else:
-                      flag = False
+                        flag = False
                     # Continue if item is one of our tracked slots.
                     if flag:
                         # Item exists already
@@ -103,9 +103,9 @@ def getdata(delay, shipdict):
                 ship = shipdict.get(ship_id)
                 for x in km:
                     flag = True
-                    item_id = x["item_type_id"]
+                    item_id = x["item_type_id"]  # Grab the item Id and the slot flag
                     fnum = x["flag"]
-                    if 11 <= fnum < 19:
+                    if 11 <= fnum < 19:  # Check which slot the item is in
                         currslot = ship[0]
                     elif 19 <= fnum < 27:
                         currslot = ship[1]
@@ -117,7 +117,8 @@ def getdata(delay, shipdict):
                         flag = False
                     if flag:
                         if item_id in currslot:
-                            currslot["count"] = currslot["count"] + 1
+                            # If the item already exists
+                            currslot["count"] = currslot["count"] + 1  # Increment total slot count and item count
                             currslot[item_id] = currslot[item_id] + 1
                             lock.release()
                             index = check_top_ten(currslot, currslot[item_id])
