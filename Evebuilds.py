@@ -2,10 +2,10 @@ import requests
 import json
 import time
 import threading
-import esipy
-from esipy import EsiClient
-from esipy import App
+import urllib.request
+import urllib.parse
 import logging
+from sys import stdout, stderr
 
 
 def print_to_file(shipdict):
@@ -42,8 +42,8 @@ def load_from_file(shipdict):
 
 def getdata(delay, shipdict):
     while True:
-        r = requests.get('https://redisq.zkillboard.com/listen.php')  # Wait for a kill mail to in then pick it up
-        killmail = r.json() # save it in a a json format
+        r = requests.get('https://redisq.zkillboard.com/listen.php')  # Wait for a kill mail to come in then pick it up
+        killmail = r.json()  # save it in a a json format
         try:
             km = killmail["package"]["killmail"]["victim"]["items"]  # grab the list of items
             ship_id = killmail["package"]["killmail"]["victim"]["ship_type_id"]   # Grab the item ID of the hull
@@ -202,8 +202,32 @@ def shift_top_ten(shipslot, item_id, index):
         lock.release()
         logging.exception(e)
 
+
+def esi_get_name(ids):
+    """Make an HTTPS request using urllib and /v2/universe/names/
+    must be given AN ARRAY OF IDS
+    if success return array of json formatted response
+    https://github.com/PoHuit/sso-standings/blob/master/standings.py"""
+    ids = json.dumps(ids)
+    ids = ids.encode('utf-8')
+    request = urllib.request.Request('https://esi.tech.ccp.is/v2/universe/names/', ids)
+    try:
+        response = urllib.request.urlopen(request)
+        if response.status == 200:
+            try:
+                return json.load(response)
+            except json.decoder.JSONDecodeError as e:
+                print("json error:  ", e, file=stderr)
+        else:
+            print("bad response status: ", response.status, file=stderr)
+    except urllib.error.URLError as e:
+        print("http error: ", e.code, file=stderr)
+    print("fetch failed for /v2/universe/names/", file=stderr)
+    exit(1)
+
 try:
     shipdict = {}
+    name_cache = {}
     try:
         shipdict = load_from_file(shipdict)
     except ValueError:
@@ -233,10 +257,15 @@ while 1:
             write_thread.start()
         else:
             lock.acquire()
-            try:
-                jtest = int(uinput)
-                x = shipdict[jtest]
-            except:
+            id = int(uinput)
+            if id in shipdict:
+                x = shipdict[id]
+                if id not in name_cache:
+                    id_arr = [id]
+                    response = esi_get_name(id_arr)
+                    name_cache[id] = response[0]['name']
+                print("Name: " + name_cache[id])
+            else:
                 x = shipdict[uinput]
             shipid = input("Enter Slot type(0-3): ")
             itemlist = x[int(shipid)]
@@ -249,13 +278,6 @@ while 1:
                 else:
                     percent = value / divider
                     print(str(index) + ". " + str(itemlist[index]) + " - " + str(percent * 100) + "%")
-            """for key, values in itemlist.items():
-                if key == 'count':
-                    print("Total count: " + str(values))
-                else:
-                    divider = itemlist["count"]
-                    percent = values / divider
-                    print(str(key) + ": " + str(percent))"""
             lock.release()
     except Exception as e:
         logging.exception(e)
