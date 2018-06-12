@@ -8,19 +8,19 @@
 <h2>Hull: {{ hull_id }}, {{ hull_name }}</h2>
 <li>Total Item Count for High Slots:{{ HCount }}</li>
     {% for item in H_items %}
-            <li>{{ loop.index0 + 1 }}. {{ item }}, {{ H_names[loop.index0] }}, {{ H_percent[loop.index0] }}</li>
+            <li>{{ loop.index0 + 1 }} - {{ item }}, {{ H_names[loop.index0] }} : {{ H_percent[loop.index0] }}</li>
     {% endfor %}
 <li>Total Item Count for Mid Slots:{{ MCount }}</li>
     {% for item in M_items %}
-            <li>{{ loop.index0 + 1 }}. {{ item }}, {{ M_names[loop.index0] }}, {{ M_percent[loop.index0] }}</li>
+            <li>{{ loop.index0 + 1 }} - {{ item }}, {{ M_names[loop.index0] }} : {{ M_percent[loop.index0] }}</li>
     {% endfor %}
 <li>Total Item Count for Low Slots:{{ LCount }}</li>
     {% for item in L_items %}
-            <li>{{ loop.index0 + 1 }}. {{ item }}, {{ L_names[loop.index0] }}, {{ L_percent[loop.index0] }}</li>
+            <li>{{ loop.index0 + 1 }} - {{ item }}, {{ L_names[loop.index0] }} : {{ L_percent[loop.index0] }}</li>
     {% endfor %}
-<li>Total Item Count for Low Slots:{{ LCount }}</li>
+<li>Total Item Count for Rig Slots:{{ LCount }}</li>
     {% for item in R_items %}
-            <li>{{ loop.index0 + 1 }}. {{ item }}, {{ R_names[loop.index0] }}, {{ R_percent[loop.index0] }}</li>
+            <li>{{ loop.index0 + 1 }} - {{ item }}, {{ R_names[loop.index0] }} : {{ R_percent[loop.index0] }}</li>
     {% endfor %}
 </body>
 </html>

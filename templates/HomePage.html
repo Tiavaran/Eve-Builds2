@@ -8,7 +8,7 @@
 <H1>ProFits</H1>
 <li>Hull List:</li>
     {% for item in H_items %}
-        <li><a href="/{{ item }}">{{ loop.index0 + 1 }}. {{ item }}, {{ H_names[loop.index0] }}</a></li>
+        <li><a href="/{{ item }}">{{ loop.index0 + 1 }} - {{ item }} : {{ H_names[loop.index0] }}</a></li>
     {% endfor %}
 </body>
 </html>
