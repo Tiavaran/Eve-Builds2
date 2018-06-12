@@ -15,12 +15,19 @@ cleanup routines but currently that is not the case.
 
 ## Road Map
 Week 1-3: Learning EVE
+
 Week 4:   Choosing a project
+
 Week 5:   Re-learning Python
+
 Week 6:   Prototype, test APIs
+
 Week 7-8: MVP
+
 Week 9:   Web Functionality
+
 Week 10:  Polish
+
 
 ## License
 [This program is licensed under the "MIT License"]
