@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Profits HomePage</title>
+</head>
+<body>
+<H1>ProFits</H1>
+<li>Hull List:</li>
+    {% for item in H_items %}
+        <li><a href="/{{ item }}">{{ loop.index0 + 1 }}. {{ item }}, {{ H_names[loop.index0] }}</a></li>
+    {% endfor %}
+</body>
+</html>

@@ -2,10 +2,11 @@ import requests
 import json
 import time
 import threading
-import esipy
-from esipy import EsiClient
-from esipy import App
+from sys import stdout, stderr
+import urllib.request
+import urllib.parse
 import logging
+import numpy as np
 
 
 def print_to_file(shipdict):
@@ -20,6 +21,22 @@ def auto_write_file(delay, shipdict):
     while 1:
         time.sleep(delay)
         print_to_file(shipdict)
+        print_i_cache()
+
+def  print_i_cache():
+    lock.acquire()
+    with open('item_data.json', 'w') as fp:
+        fp.truncate()
+        json.dump(shipdict, fp, indent=1)
+    lock.release()
+
+
+def load_icache_from_file():
+    with open('item_data.json') as fp:
+        data = json.load(fp)
+    for key, values in data.items():  # rebuilt the dictionary; needed due to how json stores keys
+        # for x in range(0,3):
+        name_cache[int(key)] = values
 
 
 def load_from_file(shipdict):
@@ -177,6 +194,79 @@ def check_top_ten(shipslot, itemcount):
         return 0
 
 
+#port the list of ships into a list for easier display on the homepage
+def pstl():
+    lock.acquire()
+    rList = []
+    for keys, values in shipdict.items():
+        rList.append(keys)
+    lock.release()
+    return rList
+
+
+#port the top 10 item list into a list for display on the web app
+def pitl(Ship_ID, layer):
+    lock.acquire()
+    rList = []
+    itemdict = shipdict[int(Ship_ID)][layer]
+    for x in range(0, 11):
+        if itemdict[x] != 0:
+            rList.append(itemdict[x])
+    lock.release()
+    return rList
+
+
+def get_count(hull_id, layer):
+    return shipdict[int(hull_id)][layer]["count"]
+
+def check_cache(ids):
+    return_array = []
+    for item in ids:
+        if item not in name_cache:
+            id_arr = [item]
+            result = esi_get_name(id_arr)
+            return_array.append(result[0]['name'])
+            name_cache[item] = result[0]['name']
+        else:
+            return_array.append(name_cache[item])
+    return return_array
+
+
+def esi_get_name(ids):
+    """Make an HTTPS request using urllib and /v2/universe/names/
+    must be given AN ARRAY OF IDS
+    if success return array of json formatted response
+    https://github.com/PoHuit/sso-standings/blob/master/standings.py"""
+    id_array = ids
+    id_array = json.dumps(id_array)
+    id_array = id_array.encode('utf-8')
+    request = urllib.request.Request('https://esi.tech.ccp.is/v2/universe/names/', id_array)
+    try:
+        response = urllib.request.urlopen(request)
+        if response.status == 200:
+            try:
+                return json.load(response)
+            except json.decoder.JSONDecodeError as e:
+                print("json error:  ", e, file=stderr)
+        else:
+            print("bad response status: ", response.status, file=stderr)
+    except urllib.error.URLError as e:
+        print("http error: ", e.code, file=stderr)
+    print("fetch failed for /v2/universe/names/", file=stderr)
+    exit(1)
+
+
+#calculate the usage percent for each item in the top 10
+def calculatepercentages(hull_name, layer):
+    lock.acquire()
+    rList = []
+    items = shipdict[int(hull_name)][layer]
+    for x in range(0, 11):
+        if items[items[x]] != 0:
+            rList.append((items[items[x]] / items["count"]) * 100)
+    lock.release()
+    return rList
+
 def shift_top_ten(shipslot, item_id, index):
     """ Takes the current shipslot dict, the item ID being inserted, and index at which the ID needs to be replaced
         returns 1 if something is inserted and 0 otherwise"""
@@ -204,58 +294,23 @@ def shift_top_ten(shipslot, item_id, index):
 
 try:
     shipdict = {}
+    name_cache = {}
     try:
         shipdict = load_from_file(shipdict)
+    except ValueError:
+        print("No Data To Load")
+    try:
+        load_icache_from_file()
     except ValueError:
         print("No Data To Load")
     lock = threading.Lock()  # Initilize a lock
     data_thread = threading.Thread(target=getdata, args=(10, shipdict))  # Function to grab killmail data
     data_thread.daemon = True
     # Auto write our to our data file
-    auto_write_thread = threading.Thread(target=auto_write_file, args=(3600, shipdict))
+    auto_write_thread = threading.Thread(target=auto_write_file, args=(15, shipdict))
     auto_write_thread.daemon = True
     data_thread.start()
     auto_write_thread.start()
 except Exception as e:
     print('Error: unable to start thread')
     logging.exception(e)
-while 1:
-    try:
-        uinput = input("Enter a ship id or print ship list(list): ")
-        if uinput == "list":
-            lock.acquire()
-            shiplist = shipdict
-            for ship_id in shiplist:
-                print(ship_id)
-            lock.release()
-        elif uinput == "backup":
-            write_thread = threading.Thread(target=print_to_file, args=(shipdict,))
-            write_thread.start()
-        else:
-            lock.acquire()
-            try:
-                jtest = int(uinput)
-                x = shipdict[jtest]
-            except:
-                x = shipdict[uinput]
-            shipid = input("Enter Slot type(0-3): ")
-            itemlist = x[int(shipid)]
-            print(itemlist["count"])
-            for index in range(1, 10):
-                divider = itemlist["count"]
-                value = itemlist[itemlist[index]]
-                if value == 0:
-                    print(str(index) + ". " + str(itemlist[index]) + " - " + str(value) + "%")
-                else:
-                    percent = value / divider
-                    print(str(index) + ". " + str(itemlist[index]) + " - " + str(percent * 100) + "%")
-            """for key, values in itemlist.items():
-                if key == 'count':
-                    print("Total count: " + str(values))
-                else:
-                    divider = itemlist["count"]
-                    percent = values / divider
-                    print(str(key) + ": " + str(percent))"""
-            lock.release()
-    except Exception as e:
-        logging.exception(e)
