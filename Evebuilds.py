@@ -27,7 +27,7 @@ def  print_i_cache():
     lock.acquire()
     with open('item_data.json', 'w') as fp:
         fp.truncate()
-        json.dump(shipdict, fp, indent=1)
+        json.dump(name_cache, fp, indent=1)
     lock.release()
 
 
@@ -62,63 +62,65 @@ def getdata(delay, shipdict):
         r = requests.get('https://redisq.zkillboard.com/listen.php')  # Wait for a kill mail to in then pick it up
         killmail = r.json() # save it in a a json format
         try:
-            km = killmail["package"]["killmail"]["victim"]["items"]  # grab the list of items
-            ship_id = killmail["package"]["killmail"]["victim"]["ship_type_id"]   # Grab the item ID of the hull
-            lock.acquire()
-            # Ship exists in the dict
-            if ship_id in shipdict:
-                ship = shipdict.get(ship_id)  # Grab the lists for that ship
-                for x in km:
-                    flag = True
-                    item_id = x["item_type_id"]
-                    fnum = x["flag"]
-                    if 11 <= fnum < 19:   # Check which slot the item is in
-                        currslot = ship[0]
-                    elif 19 <= fnum < 27:
-                        currslot = ship[1]
-                    elif 27 <= fnum < 35:
-                        currslot = ship[2]
-                    elif 92 <= fnum < 95:
-                        currslot = ship[3]
-                    else:
-                        flag = False
-                    # Continue if item is one of our tracked slots.
-                    if flag:
-                        # Item exists already
-                        if item_id in currslot:  # This item has been seen for this hull previously
-                            # Increment total slot count and this item count
-                            currslot["count"] = currslot["count"] + 1
-                            currslot[item_id] = currslot[item_id] + 1
-                            lock.release()
-                            # check if this item fits in the top 10 then update the list
-                            index = check_top_ten(currslot, currslot[item_id])
-                            shift_top_ten(currslot, item_id, index)
-                            lock.acquire()
+            if killmail is not None:
+                km = killmail["package"]["killmail"]["victim"]["items"]  # grab the list of items
+                ship_id = killmail["package"]["killmail"]["victim"]["ship_type_id"]   # Grab the item ID of the hull
+                lock.acquire()
+                # Ship exists in the dict
+                if ship_id in shipdict:
+                    ship = shipdict.get(ship_id)  # Grab the lists for that ship
+                    for x in km:
+                        flag = True
+                        item_id = x["item_type_id"]
+                        fnum = x["flag"]
+                        if 11 <= fnum < 19:   # Check which slot the item is in
+                            currslot = ship[0]
+                        elif 19 <= fnum < 27:
+                            currslot = ship[1]
+                        elif 27 <= fnum < 35:
+                            currslot = ship[2]
+                        elif 92 <= fnum < 95:
+                            currslot = ship[3]
                         else:
-                            # Item does not exist
-                            if "count" in currslot: # We have seen items for this hull in this slot
-                                # increment the total slot count and initialize this item count to 1
+                            flag = False
+                        # Continue if item is one of our tracked slots.
+                        if flag:
+                            # Item exists already
+                            if item_id in currslot:  # This item has been seen for this hull previously
+                                # Increment total slot count and this item count
                                 currslot["count"] = currslot["count"] + 1
-                                currslot[item_id] = 1
+                                currslot[item_id] = currslot[item_id] + 1
                                 lock.release()
-                                # Check the top 10 and update if necessary
+                                # check if this item fits in the top 10 then update the list
                                 index = check_top_ten(currslot, currslot[item_id])
                                 shift_top_ten(currslot, item_id, index)
                                 lock.acquire()
                             else:
-                                    # if no items have been seen for this hull in this slot initialize the dict
-                                currslot["count"] = 1
-                                currslot[item_id] = 1
-                                # Start the top 10 item list
-                                currslot[1] = item_id
-                                currslot[0] = 0
-                                # initialize the rest of the top 10 to 0
-                                for num in range(2, 11):
-                                    currslot[num] = 0
-                                """lock.release()
-                                index = check_top_ten(currslot, currslot[item_id])
-                                shift_top_ten(currslot, item_id, index)
+                                # Item does not exist
+                                if "count" in currslot: # We have seen items for this hull in this slot
+                                    # increment the total slot count and initialize this item count to 1
+                                    currslot["count"] = currslot["count"] + 1
+                                    currslot[item_id] = 1
+                                    lock.release()
+                                    # Check the top 10 and update if necessary
+                                    index = check_top_ten(currslot, currslot[item_id])
+                                    shift_top_ten(currslot, item_id, index)
+                                    lock.acquire()
+                                else:
+                                        # if no items have been seen for this hull in this slot initialize the dict
+                                    currslot["count"] = 1
+                                    currslot[item_id] = 1
+                                    # Start the top 10 item list
+                                    currslot[1] = item_id
+                                    currslot[0] = 0
+                                    # initialize the rest of the top 10 to 0
+                                    for num in range(2, 11):
+                                        currslot[num] = 0
+                                    """lock.release()
+                                    index = check_top_ten(currslot, currslot[item_id])
+                                    shift_top_ten(currslot, item_id, index)
                                 lock.acquire()"""
+
             # Ship does not exist in the dict
             else:
                 # initialize the lists of dictionaries for this hull; each entry in the list is a slot type
