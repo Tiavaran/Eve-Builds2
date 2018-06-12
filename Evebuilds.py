@@ -6,7 +6,6 @@ from sys import stdout, stderr
 import urllib.request
 import urllib.parse
 import logging
-import numpy as np
 
 
 def print_to_file(shipdict):
@@ -60,7 +59,8 @@ def load_from_file(shipdict):
 def getdata(delay, shipdict):
     while True:
         r = requests.get('https://redisq.zkillboard.com/listen.php')  # Wait for a kill mail to in then pick it up
-        killmail = r.json() # save it in a a json format
+        if r is not None:
+            killmail = r.json()  # save it in a a json format
         try:
             if killmail is not None:
                 km = killmail["package"]["killmail"]["victim"]["items"]  # grab the list of items
@@ -92,7 +92,7 @@ def getdata(delay, shipdict):
                                 currslot[item_id] = currslot[item_id] + 1
                                 lock.release()
                                 # check if this item fits in the top 10 then update the list
-                                index = check_top_ten(currslot, currslot[item_id])
+                                index = check_top_ten(currslot, currslot[item_id],item_id)
                                 shift_top_ten(currslot, item_id, index)
                                 lock.acquire()
                             else:
@@ -103,7 +103,7 @@ def getdata(delay, shipdict):
                                     currslot[item_id] = 1
                                     lock.release()
                                     # Check the top 10 and update if necessary
-                                    index = check_top_ten(currslot, currslot[item_id])
+                                    index = check_top_ten(currslot, currslot[item_id],item_id)
                                     shift_top_ten(currslot, item_id, index)
                                     lock.acquire()
                                 else:
@@ -121,49 +121,49 @@ def getdata(delay, shipdict):
                                     shift_top_ten(currslot, item_id, index)
                                 lock.acquire()"""
 
-            # Ship does not exist in the dict
-            else:
-                # initialize the lists of dictionaries for this hull; each entry in the list is a slot type
-                shipdict[ship_id] = [{}, {}, {}, {}]
-                ship = shipdict.get(ship_id)
-                for x in km:
-                    flag = True
-                    item_id = x["item_type_id"]  # Grab the item Id and the slot flag
-                    fnum = x["flag"]
-                    if 11 <= fnum < 19:  # Check which slot the item is in
-                        currslot = ship[0]
-                    elif 19 <= fnum < 27:
-                        currslot = ship[1]
-                    elif 27 <= fnum < 35:
-                        currslot = ship[2]
-                    elif 92 <= fnum < 95:
-                        currslot = ship[3]
-                    else:
-                        flag = False
-                    if flag:
-                        if item_id in currslot:
-                            # If the item already exists
-                            currslot["count"] = currslot["count"] + 1  # Increment total slot count and item count
-                            currslot[item_id] = currslot[item_id] + 1
-                            lock.release()
-                            index = check_top_ten(currslot, currslot[item_id])
-                            shift_top_ten(currslot, item_id, index)
-                            lock.acquire()
+                # Ship does not exist in the dict
+                else:
+                    # initialize the lists of dictionaries for this hull; each entry in the list is a slot type
+                    shipdict[ship_id] = [{}, {}, {}, {}]
+                    ship = shipdict.get(ship_id)
+                    for x in km:
+                        flag = True
+                        item_id = x["item_type_id"]  # Grab the item Id and the slot flag
+                        fnum = x["flag"]
+                        if 11 <= fnum < 19:  # Check which slot the item is in
+                            currslot = ship[0]
+                        elif 19 <= fnum < 27:
+                            currslot = ship[1]
+                        elif 27 <= fnum < 35:
+                            currslot = ship[2]
+                        elif 92 <= fnum < 95:
+                            currslot = ship[3]
                         else:
-                            if "count" in currslot:
-                                currslot["count"] = currslot["count"] + 1
-                                currslot[item_id] = 1
+                            flag = False
+                        if flag:
+                            if item_id in currslot:
+                                # If the item already exists
+                                currslot["count"] = currslot["count"] + 1  # Increment total slot count and item count
+                                currslot[item_id] = currslot[item_id] + 1
                                 lock.release()
-                                index = check_top_ten(currslot, currslot[item_id])
+                                index = check_top_ten(currslot, currslot[item_id], item_id)
                                 shift_top_ten(currslot, item_id, index)
                                 lock.acquire()
                             else:
-                                currslot["count"] = 1
-                                currslot[item_id] = 1
-                                currslot[1] = item_id
-                                currslot[0] = 0
-                                for num in range(2, 11):
-                                    currslot[num] = 0
+                                if "count" in currslot:
+                                    currslot["count"] = currslot["count"] + 1
+                                    currslot[item_id] = 1
+                                    lock.release()
+                                    index = check_top_ten(currslot, currslot[item_id],item_id)
+                                    shift_top_ten(currslot, item_id, index)
+                                    lock.acquire()
+                                else:
+                                    currslot["count"] = 1
+                                    currslot[item_id] = 1
+                                    currslot[1] = item_id
+                                    currslot[0] = 0
+                                    for num in range(2, 11):
+                                        currslot[num] = 0
             # print(ship)
             # print(ship_id)
             lock.release()
@@ -172,28 +172,73 @@ def getdata(delay, shipdict):
             logging.exception(e)
 
 
-def check_top_ten(shipslot, itemcount):
+def check_top_ten(shipslot, itemcount, item_id):
     """Indexes 1-10 in each slot dictionary contains the item id of the item that belongs in that slot
     If not in top 10"""
+    flag = False
+    dupe_loc = 0
+    return_value = 0
     try:
         test = shipslot[shipslot[10]]
+        for x in range(1, 11):
+            if item_id == shipslot[x]:
+                flag = True
+                dupe_loc = x
+        if flag:
+            for l in range(1, dupe_loc+1):
+                if shipslot[shipslot[l]] == itemcount-1:
+                    temp = shipslot[l]
+                    shipslot[l] = item_id
+                    shipslot[dupe_loc] = temp
+                    return 0
+                else:
+                    return 0
         if itemcount < shipslot[shipslot[10]]:
-            return 0
+            return_value = 0
         else:
             # if greater than slot 1
             if itemcount > shipslot[shipslot[1]]:
-                return 1
+                return_value = 1
             elif itemcount > shipslot[shipslot[5]]:   # if in top 5
-                for x in range(2, 5):
+                for x in range(2, 6):
                     if itemcount > shipslot[shipslot[x]]:
-                        return x  # return the slot this item will fit in
+                        return_value = x  # return the slot this item will fit
+                        break
             else:  # if in top 10 but not top 5
                 for y in range(6, 10):
                     if itemcount > shipslot[shipslot[y]]:
-                        return y  # return the slot this item will fit in
+                        return_value = y  # return the slot this item will fit i
+                        break
+        return return_value
     except Exception as e:
         logging.exception(e)
         return 0
+
+
+def shift_top_ten(shipslot, item_id, index):
+    """ Takes the current shipslot dict, the item ID being inserted, and index at which the ID needs to be replaced
+        returns 1 if something is inserted and 0 otherwise"""
+    lock.acquire()
+    try:
+        if index is None:
+            lock.release()
+            return 0
+        elif index < 1 or index > 10:
+            lock.release()
+            return 0
+        else:
+            if item_id == shipslot[index]:
+                lock.release()
+                return 0
+            for slot in range(9, index-1, -1):
+                shipslot[slot] = shipslot[slot - 1]
+            shipslot[index] = item_id
+            lock.release()
+            return 1
+
+    except Exception as e:
+        lock.release()
+        logging.exception(e)
 
 
 #port the list of ships into a list for easier display on the homepage
@@ -271,30 +316,6 @@ def calculatepercentages(hull_name, layer):
     lock.release()
     return rList
 
-def shift_top_ten(shipslot, item_id, index):
-    """ Takes the current shipslot dict, the item ID being inserted, and index at which the ID needs to be replaced
-        returns 1 if something is inserted and 0 otherwise"""
-    lock.acquire()
-    try:
-        if index is None:
-            lock.release()
-            return 0
-        elif index < 1 or index > 10:
-            lock.release()
-            return 0
-        else:
-            if item_id == shipslot[index]:
-                lock.release()
-                return 0
-            for slot in range(10, index, -1):
-                shipslot[slot] = shipslot[slot - 1]
-            shipslot[index] = item_id
-            lock.release()
-            return 1
-
-    except Exception as e:
-        lock.release()
-        logging.exception(e)
 
 try:
     shipdict = {}
