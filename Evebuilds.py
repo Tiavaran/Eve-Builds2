@@ -222,6 +222,7 @@ def get_count(hull_id, layer):
     return shipdict[int(hull_id)][layer]["count"]
 
 def check_cache(ids):
+    lock.acquire()
     return_array = []
     for item in ids:
         if item not in name_cache:
@@ -231,6 +232,7 @@ def check_cache(ids):
             name_cache[item] = result[0]['name']
         else:
             return_array.append(name_cache[item])
+    lock.release()
     return return_array
 
 
